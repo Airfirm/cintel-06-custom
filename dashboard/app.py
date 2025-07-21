@@ -19,8 +19,8 @@ start = end - pd.Timedelta(weeks=26)
 ui.page_opts(title="Stock Explorer Dashboard", fillable=True)
 
 with ui.sidebar():
-    ui.input_selectize("ticker", "Select Stocks (Companies)", choices=stocks, selected="AMZN")
-    ui.input_date_range("dates", "Select dates", start=start, end=end)
+    ui.input_selectize("ticker", "Select Stocks (Company)", choices=stocks, selected="AMZN")
+    ui.input_date_range("dates", "Select Dates", start=start, end=end)
 
 
 with ui.layout_column_wrap(fill=False):
@@ -49,7 +49,7 @@ with ui.layout_column_wrap(fill=False):
 
 with ui.layout_columns(col_widths=[9, 3]):
     with ui.card(full_screen=True):
-        ui.card_header("Price history")
+        ui.card_header("Price History")
 
         @render_plotly
         def price_history():
@@ -117,12 +117,12 @@ with ui.layout_columns(col_widths=[9, 3]):
 
 
     with ui.card():
-        ui.card_header("Latest data")
+        ui.card_header("Latest Data")
 
         @render.data_frame
         def latest_data():
-            x = get_data()[:1].T.reset_index()
-            # x = get_data()[-1:].T.reset_index()
+            # x = get_data()[:1].T.reset_index()
+            x = get_data()[-1:].T.reset_index()
             x.columns = ["Category", "Value"]
             x["Value"] = x["Value"].apply(lambda v: f"{v:.1f}")
             return x
