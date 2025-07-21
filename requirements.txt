@@ -13,4 +13,3 @@ plotly.express
 yfinance
 # pandas==2.2.1
 cufflinks
-Plotly.Express
