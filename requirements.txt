@@ -1,5 +1,5 @@
 faicons
-palmerpenguins
+# palmerpenguins
 pandas
 pyarrow
 plotly
@@ -9,4 +9,7 @@ shinylive
 shinywidgets
 scipy
 plotly.express
-# altair[all]
+# plotly < 6.0 # https://github.com/santosjorge/cufflinks/issues/289
+yfinance
+# pandas==2.2.1
+cufflinks
