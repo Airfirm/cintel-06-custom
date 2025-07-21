@@ -1,15 +1,16 @@
 faicons
 # palmerpenguins
-# pandas
+pandas
 pyarrow
-# plotly
+plotly
 seaborn
 shiny
 shinylive
 shinywidgets
 scipy
 plotly.express
-plotly < 6.0 # https://github.com/santosjorge/cufflinks/issues/289
+# plotly < 6.0 # https://github.com/santosjorge/cufflinks/issues/289
 yfinance
-pandas==2.2.1
+# pandas==2.2.1
 cufflinks
+Plotly.Express
