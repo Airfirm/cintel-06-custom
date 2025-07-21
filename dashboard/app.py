@@ -2,6 +2,7 @@ from pathlib import Path
 
 import cufflinks as cf
 import pandas as pd
+from collections import deque
 import yfinance as yf
 from faicons import icon_svg
 from shiny import reactive
