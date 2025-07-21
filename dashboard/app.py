@@ -16,10 +16,10 @@ end = pd.Timestamp.now()
 start = end - pd.Timedelta(weeks=26)
 
 
-ui.page_opts(title="Stock explorer", fillable=True)
+ui.page_opts(title="Stock Explorer Dashboard", fillable=True)
 
 with ui.sidebar():
-    ui.input_selectize("ticker", "Select Stocks", choices=stocks, selected="AAPL")
+    ui.input_selectize("ticker", "Select Stocks (Companies)", choices=stocks, selected="AMZN")
     ui.input_date_range("dates", "Select dates", start=start, end=end)
 
 
