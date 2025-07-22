@@ -11,7 +11,7 @@ from pathlib import Path
 import time
 
 # Configuration
-API_KEY = "d7ba80b2c6ccc315ff2d4e3948a80b2b"
+API_KEY = "api_weather_key"
 DEFAULT_CITY = "Dallas"
 UNITS = "metric"
 MAX_HISTORY = 168
