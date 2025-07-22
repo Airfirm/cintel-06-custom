@@ -13,28 +13,21 @@ import time
 # Configuration
 API_KEY = "d7ba80b2c6ccc315ff2d4e3948a80b2b"
 DEFAULT_CITY = "Dallas"
+UNITS = "metric"
 MAX_HISTORY = 168
 HISTORY_FILE = "weather_history.json"
 
-# Unit systems
-UNITS = {
-    "metric": {
-        "temperature": "°C",
-        "speed": "m/s",
-        "pressure": "hPa",
-        "label": "Celsius"
-    },
-    "imperial": {
-        "temperature": "°F",
-        "speed": "mph",
-        "pressure": "inHg",
-        "label": "Fahrenheit"
-    }
+# Metric labels for display
+METRIC_LABELS = {
+    "temperature": "Temperature (°C)",
+    "humidity": "Humidity (%)",
+    "pressure": "Pressure (hPa)",
+    "wind_speed": "Wind Speed (m/s)"
 }
 
 # Function to fetch weather data
-def fetch_weather(city, unit_system="metric"):
-    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units={unit_system}"
+def fetch_weather(city):
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units={UNITS}"
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
@@ -46,167 +39,103 @@ def fetch_weather(city, unit_system="metric"):
             "pressure": data['main']['pressure'],
             "wind_speed": data['wind']['speed'],
             "weather_condition": data['weather'][0]['main'],
-            "unit_system": unit_system,  # Store the unit system used
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     except (requests.RequestException, KeyError) as e:
         print(f"Error fetching weather: {e}")
         return None
 
-# Conversion functions with default unit handling
-def convert_temperature(temp, from_unit="metric", to_unit="metric"):
-    if from_unit == to_unit:
-        return temp
-    if from_unit == "metric" and to_unit == "imperial":
-        return (temp * 9/5) + 32
-    else:
-        return (temp - 32) * 5/9
-
-def convert_speed(speed, from_unit="metric", to_unit="metric"):
-    if from_unit == to_unit:
-        return speed
-    if from_unit == "metric" and to_unit == "imperial":
-        return speed * 2.237
-    else:
-        return speed / 2.237
-
-def convert_pressure(pressure, from_unit="metric", to_unit="metric"):
-    if from_unit == to_unit:
-        return pressure
-    if from_unit == "metric" and to_unit == "imperial":
-        return pressure * 0.02953
-    else:
-        return pressure / 0.02953
+# Initialize with test data
+weather_data = fetch_weather(DEFAULT_CITY)
+print(weather_data)
 
 # UI Setup
 ui.page_opts(title="Live Weather Dashboard", fillable=True)
 
-# Sidebar with unit toggle
+# Sidebar
 with ui.sidebar(open="open"):
     ui.h2("Weather Controls")
     ui.input_text("city_input", "Enter City", DEFAULT_CITY)
     ui.input_action_button("update_btn", "Get Weather", class_="btn-primary")
     
     ui.hr()
-    ui.input_switch("unit_toggle", "Use Fahrenheit", False)
-    
     ui.input_selectize(
         "selected_metric",
         "Select Metric to Visualize",
-        ["temperature", "humidity", "pressure", "wind_speed"],
+        choices=list(METRIC_LABELS.keys()),
         selected="temperature"
     )
     ui.input_numeric("history_hours", "History Hours", 24, min=1, max=MAX_HISTORY)
     ui.a("OpenWeatherMap API", href="https://openweathermap.org/api", target="_blank")
 
-# Reactive data storage
+# Reactive data storage with file persistence
 weather_history = reactive.Value(deque(maxlen=MAX_HISTORY))
 
-# Get current unit system
-@reactive.calc
-def current_unit_system():
-    return "imperial" if input.unit_toggle() else "metric"
-
-# Load initial history with error handling
+# Load initial history from file
 @reactive.Effect
 def load_initial_history():
-    try:
-        if Path(HISTORY_FILE).exists():
-            with open(HISTORY_FILE, "r") as f:
-                history = json.load(f)
-                # Ensure all entries have unit_system
-                for entry in history:
-                    if "unit_system" not in entry:
-                        entry["unit_system"] = "metric"  # Default to metric for old entries
-                weather_history.set(deque(history, maxlen=MAX_HISTORY))
-    except Exception as e:
-        print(f"Error loading history: {e}")
+    if Path(HISTORY_FILE).exists():
+        with open(HISTORY_FILE, "r") as f:
+            history = json.load(f)
+            weather_history.set(deque(history, maxlen=MAX_HISTORY))
 
-# Convert historical data to current units with error handling
+# Custom file reader with polling
 @reactive.calc
-def converted_history():
+def file_reader():
+    if Path(HISTORY_FILE).exists():
+        with open(HISTORY_FILE, "r") as f:
+            return json.load(f)
+    return []
+
+# Reactive effect to check for file changes
+@reactive.Effect
+def check_file_updates():
+    file_reader()
+    time.sleep(1)
+    reactive.invalidate_later(1)
+
+# Reactive calculation for filtered history
+@reactive.calc
+def filtered_history():
     history = list(weather_history.get())
-    current_units = current_unit_system()
-    
-    converted = []
-    for entry in history:
-        try:
-            # Ensure entry has unit_system, default to metric if missing
-            entry_units = entry.get("unit_system", "metric")
-            
-            if entry_units == current_units:
-                converted.append(entry)
-            else:
-                converted.append({
-                    "city": entry["city"],
-                    "temperature": convert_temperature(
-                        entry["temperature"],
-                        entry_units,
-                        current_units
-                    ),
-                    "humidity": entry["humidity"],
-                    "pressure": convert_pressure(
-                        entry["pressure"],
-                        entry_units,
-                        current_units
-                    ),
-                    "wind_speed": convert_speed(
-                        entry["wind_speed"],
-                        entry_units,
-                        current_units
-                    ),
-                    "weather_condition": entry["weather_condition"],
-                    "unit_system": current_units,
-                    "timestamp": entry["timestamp"]
-                })
-        except KeyError as e:
-            print(f"Skipping invalid entry: {e}")
-            continue
-            
-    return converted
-
-# Get current weather DataFrame
-@reactive.calc
-def current_weather_df():
-    history = converted_history()
-    if history:
-        df = pd.DataFrame([history[-1]])
-        df["Units"] = UNITS[current_unit_system()]["label"]
-        return df
-    return pd.DataFrame()
-
-# Get history DataFrame
-@reactive.calc
-def history_df():
-    history = converted_history()
     hours = input.history_hours()
-    filtered = history[-hours:] if hours <= len(history) else history
-    return pd.DataFrame(filtered)
+    return history[-hours:] if hours <= len(history) else history
 
-# Get unit labels
-@reactive.calc
-def current_units():
-    return UNITS[current_unit_system()]
-
-# Reactive effect for fetching data
+# Reactive effect for fetching and saving data
 @reactive.Effect
 @reactive.event(input.update_btn)
 def update_weather():
     city = input.city_input()
     if city:
-        unit_system = current_unit_system()
-        new_data = fetch_weather(city, unit_system)
+        new_data = fetch_weather(city)
         if new_data:
             current_history = weather_history.get()
             current_history.append(new_data)
             
-            try:
-                with open(HISTORY_FILE, "w") as f:
-                    json.dump(list(current_history), f)
-            except Exception as e:
-                print(f"Error saving history: {e}")
+            with open(HISTORY_FILE, "w") as f:
+                json.dump(list(current_history), f)
             
             weather_history.set(current_history)
+
+# Reactive calculations for DataFrames
+@reactive.calc
+def current_weather_df():
+    history = weather_history.get()
+    return pd.DataFrame([history[-1]]) if history else pd.DataFrame()
+
+@reactive.calc
+def history_df():
+    return pd.DataFrame(filtered_history())
+
+# Loading spinner
+@render.ui
+def loading_spinner():
+    if not weather_history.get():
+        return ui.tags.div(
+            ui.tags.span(class_="spinner-border spinner-border-sm"),
+            "Loading data...",
+            class_="text-center my-5"
+        )
 
 # Main layout
 with ui.layout_columns():
@@ -222,7 +151,7 @@ with ui.layout_columns():
         def weather_history_table():
             return render.DataGrid(history_df())
 
-# Visualization cards
+# Visualization cards with full reactivity
 with ui.layout_columns():
     @render_plotly
     def weather_trend():
@@ -232,30 +161,31 @@ with ui.layout_columns():
         if df.empty:
             return px.scatter(title="No data available").update_layout(showlegend=False)
         
-        y_label = f"{selected_metric.title()} ({current_units()[selected_metric]})"
-        
         return px.line(
             df,
             x="timestamp",
             y=selected_metric,
             color="city",
-            title=f"{selected_metric.title()} Trend Over Time",
+            title=f"{METRIC_LABELS[selected_metric]} Trend Over Time",
             labels={
                 "timestamp": "Time",
-                selected_metric: y_label
+                selected_metric: METRIC_LABELS[selected_metric]
             }
         ).update_traces(mode="lines+markers")
 
     @render_plotly
     def weather_conditions():
         df = history_df()
+        selected_metric = input.selected_metric()
+        
         if df.empty:
             return px.scatter(title="No data available").update_layout(showlegend=False)
         
         return px.pie(
             df,
             names="weather_condition",
-            title="Weather Condition Distribution",
+            values=selected_metric,
+            title=f"{METRIC_LABELS[selected_metric]} Distribution by Weather Condition",
             hole=0.4
         )
 
@@ -264,21 +194,23 @@ with ui.card(full_screen=True):
     @render_plotly
     def weather_correlation():
         df = history_df()
+        selected_metric = input.selected_metric()
+        
         if df.empty:
             return px.scatter(title="No data available").update_layout(showlegend=False)
         
-        dimensions = ["temperature", "humidity", "pressure", "wind_speed"]
-        labels = {
-            "temperature": f"Temperature ({current_units()['temperature']})",
-            "humidity": "Humidity (%)",
-            "pressure": f"Pressure ({current_units()['pressure']})",
-            "wind_speed": f"Wind Speed ({current_units()['speed']})"
-        }
-        
         return px.scatter_matrix(
             df,
-            dimensions=dimensions,
-            color="city",
-            title="Weather Metrics Correlation",
-            labels=labels
+            dimensions=list(METRIC_LABELS.keys()),
+            color=selected_metric,
+            title=f"Metrics Correlation (Colored by {METRIC_LABELS[selected_metric]})",
+            labels=METRIC_LABELS
         )
+
+# Update available metrics based on data
+@reactive.Effect
+def update_metric_filter():
+    df = history_df()
+    if not df.empty:
+        available_metrics = [col for col in METRIC_LABELS.keys() if col in df.columns]
+        ui.update_selectize("selected_metric", choices=available_metrics)
