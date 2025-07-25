@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Configuration
-API_KEY = "api_weather_key"
+API_KEY = "d7ba80b2c6ccc315ff2d4e3948a80b2b"
 TEXAS_CITIES = [
     "Houston", "San Antonio", "Dallas", "Austin", "Fort Worth",
     "El Paso", "Arlington", "Corpus Christi", "Plano", "Laredo",
