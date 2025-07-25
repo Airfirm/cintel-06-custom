@@ -255,10 +255,10 @@ with express.ui.card(full_screen=True):
             labels=METRIC_LABELS
         )
 
-# Update available metrics based on data
-@reactive.Effect
-def update_metric_filter():
-    df = history_df()
-    if not df.empty:
-        available_metrics = [col for col in METRIC_LABELS.keys() if col in df.columns]
-        express.ui.update_selectize("selected_metric", choices=available_metrics)
+    # Update available metrics based on data
+    @reactive.Effect
+    def update_metric_filter():
+        df = history_df()
+        if not df.empty:
+            available_metrics = [col for col in METRIC_LABELS.keys() if col in df.columns]
+            express.ui.update_selectize("selected_metric", choices=available_metrics)
