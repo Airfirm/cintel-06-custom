@@ -55,7 +55,7 @@ def fetch_all_texas_weather():
     return weather_data
 
 # UI Setup
-ui.page_opts(title="Texas Weather Dashboard", fillable=True)
+ui.page_opts(title="Texas Weather Dashboard - Femi", fillable=True)
 
 # Sidebar
 with express.ui.sidebar(open="open"):
